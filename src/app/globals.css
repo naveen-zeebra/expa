@@ -1,0 +1,187 @@
+@import "tailwindcss";
+
+@theme {
+  --color-surface: #161616;
+  --color-surface-hover: #303030;
+  --color-warm: #eee6df;
+  --color-muted: #99918c;
+  --color-muted-dark: #4b4847;
+  --color-accent: #f0ba26;
+  --color-portfolio-bg: #faf9f8;
+
+  --font-display: "DM Sans", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --font-dots: "Inter", monospace;
+}
+
+/* ─── Reset ─── */
+*,
+*::after,
+*::before {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizelegibility;
+  background: #000;
+  scrollbar-width: none;
+}
+
+body {
+  line-height: 1;
+  overflow-x: hidden;
+}
+
+::-webkit-scrollbar {
+  display: none;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+textarea {
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  padding: 0;
+}
+
+button {
+  cursor: pointer;
+}
+
+ol,
+ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* ─── Dotted border utility ─── */
+.dotted-border-top {
+  position: relative;
+  overflow: clip;
+}
+.dotted-border-top::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 10000px;
+  border-top: 3px dotted currentColor;
+  transform: scale(0.5, 0.4);
+  transform-origin: top left;
+  opacity: 0.25;
+}
+
+.dotted-border-bottom {
+  position: relative;
+  overflow: clip;
+}
+.dotted-border-bottom::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 10000px;
+  border-top: 3px dotted currentColor;
+  transform: scale(0.5, 0.4);
+  transform-origin: bottom left;
+  opacity: 0.25;
+}
+
+/* ─── Animations ─── */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes particleFade {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes introFadeOut {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+}
+
+/* ─── Smooth scroll body ─── */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+/* ─── Footer gradient ─── */
+.footer-gradient::before {
+  content: "";
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  width: 100%;
+  height: 50px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, black 100%);
+}
