@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import IntroCanvas from "@/components/IntroCanvas";
+// import IntroCanvas from "@/components/IntroCanvas";
 import Header from "@/components/Header";
 import Hero from "@/components/Hero";
 import CompanyCards from "@/components/CompanyCards";
@@ -29,7 +29,7 @@ export default function Home() {
   return (
     <div className="relative min-h-screen bg-black">
       {/* Intro Animation */}
-      <IntroCanvas />
+      {/* <IntroCanvas /> */}
 
       {/* Fixed Header */}
       <Header
@@ -53,14 +53,14 @@ export default function Home() {
         <Hero />
 
         {/* Company Cards */}
-        {/* <CompanyCards /> */}
+        <CompanyCards />
 
         {/* information section */}
-        {/* <InformationSection /> */}
+        <InformationSection />
       </main>
 
       {/* Footer */}
-      <Footer />
+      {/* <Footer /> */}
     </div>
   );
 }
