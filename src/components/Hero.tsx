@@ -1,198 +1,267 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useRef, useEffect, useCallback } from "react";
+import gsap from "gsap";
 
-class Particle {
+interface Particle {
   x: number;
   y: number;
-  originX: number;
-  originY: number;
+  tx: number;
+  ty: number;
   vx: number;
   vy: number;
-  size: number;
+  radius: number;
   color: string;
-
-  constructor(x: number, y: number, color: string) {
-    // Start exactly at the origin for perfectly crisp text at rest
-    this.x = x;
-    this.y = y;
-    this.originX = x;
-    this.originY = y;
-    this.vx = 0;
-    this.vy = 0;
-    this.size = 1.2;
-    this.color = color;
-  }
-
-  update(mouseX: number, mouseY: number, mouseRadius: number) {
-    const dx = mouseX - this.x;
-    const dy = mouseY - this.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-
-    if (distance < mouseRadius && distance > 0) {
-      const forceDirectionX = dx / distance;
-      const forceDirectionY = dy / distance;
-
-      // Calculate force: stronger closer to the mouse
-      const force = (mouseRadius - distance) / mouseRadius;
-
-      // Apply repulsion force
-      const directionX = forceDirectionX * force * 20;
-      const directionY = forceDirectionY * force * 20;
-
-      this.vx -= directionX;
-      this.vy -= directionY;
-    }
-
-    // Spring force to return to origin
-    const dxOrigin = this.originX - this.x;
-    const dyOrigin = this.originY - this.y;
-
-    // Spring constant - controls how fast they snap back
-    this.vx += dxOrigin * 0.08;
-    this.vy += dyOrigin * 0.08;
-
-    // Damping (friction) - lower value means more friction/less bouncing
-    this.vx *= 0.82;
-    this.vy *= 0.82;
-
-    this.x += this.vx;
-    this.y += this.vy;
-  }
-
-  draw(ctx: CanvasRenderingContext2D) {
-    ctx.fillStyle = this.color;
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-    ctx.closePath();
-    ctx.fill();
-  }
 }
+
+const TEXT_LINES = ["Expa is a", "Company Studio"];
+
+const SETTINGS = {
+  color: "#ffffff",
+  fontSize: 90,
+  gap: 3,
+  radius: 1.2,
+};
 
 export default function Hero() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const hintRef = useRef<HTMLDivElement>(null);
+  const particlesRef = useRef<Particle[]>([]);
+  const mouseRef = useRef({ x: -9999, y: -9999, radius: 80 });
+  const introCompleteRef = useRef(false);
+  const rafIdRef = useRef<number | null>(null);
 
+  /* ── Generate particles from text bitmap ── */
+  const generateParticles = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const tmp = document.createElement("canvas");
+    const tmpCtx = tmp.getContext("2d");
+    if (!tmpCtx) return;
+
+    tmp.width = canvas.width;
+    tmp.height = canvas.height;
+
+    /* Responsive font size — scales with viewport width */
+    const fontSize = Math.min(canvas.width * 0.07, SETTINGS.fontSize);
+    const lineHeight = fontSize * 1.3;
+    const totalTextHeight = lineHeight * TEXT_LINES.length;
+    const startY = canvas.height / 2 - totalTextHeight / 2 + fontSize * 0.35;
+
+    tmpCtx.textAlign = "center";
+    tmpCtx.textBaseline = "middle";
+    tmpCtx.strokeStyle = "#ffffff";
+    tmpCtx.lineWidth = 2.5;
+    tmpCtx.font = `300 ${fontSize}px Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+
+    /* Draw each line as stroked outlines */
+    TEXT_LINES.forEach((line, idx) => {
+      tmpCtx.strokeText(line, tmp.width / 2, startY + idx * lineHeight);
+    });
+
+    const imgData = tmpCtx.getImageData(0, 0, tmp.width, tmp.height);
+    const newParticles: Particle[] = [];
+
+    for (let y = 0; y < tmp.height; y += SETTINGS.gap) {
+      for (let x = 0; x < tmp.width; x += SETTINGS.gap) {
+        const i = (y * tmp.width + x) * 4;
+        if (imgData.data[i + 3] > 128) {
+          newParticles.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            tx: x,
+            ty: y,
+            vx: 0,
+            vy: 0,
+            radius: SETTINGS.radius,
+            color: SETTINGS.color,
+          });
+        }
+      }
+    }
+
+    particlesRef.current = newParticles;
+  }, []);
+
+  /* ── GSAP morph — particles fly in to text shape ── */
+  const animateIntro = useCallback(() => {
+    const particles = particlesRef.current;
+    const hint = hintRef.current;
+
+    gsap.to(particles, {
+      duration: 3,
+      x: (i: number) => particles[i].tx,
+      y: (i: number) => particles[i].ty,
+      ease: "power3.out",
+      stagger: { amount: 2 },
+      onComplete() {
+        introCompleteRef.current = true;
+        hint?.classList.add("show");
+        particles.forEach((p) => {
+          p.x = p.tx;
+          p.y = p.ty;
+        });
+      },
+    });
+  }, []);
+
+  /* ── Draw loop ── */
+  const draw = useCallback(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const particles = particlesRef.current;
+    const mouse = mouseRef.current;
+    const introComplete = introCompleteRef.current;
+
+    particles.forEach((p) => {
+      if (introComplete) {
+        const dx = p.x - mouse.x;
+        const dy = p.y - mouse.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist < mouse.radius) {
+          const force = (mouse.radius - dist) / mouse.radius;
+          const angle = Math.atan2(dy, dx);
+          p.vx += Math.cos(angle) * force * 6;
+          p.vy += Math.sin(angle) * force * 6;
+        }
+
+        p.vx += (p.tx - p.x) * 0.08;
+        p.vy += (p.ty - p.y) * 0.08;
+        p.vx *= 0.78;
+        p.vy *= 0.78;
+        p.x += p.vx;
+        p.y += p.vy;
+
+        const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+        const hue = (speed * 600) % 360;
+        const sat = Math.min(speed * 18, 100);
+        ctx.fillStyle = `hsl(${hue}, ${sat}%, ${80 + sat * 0.2}%)`;
+      } else {
+        ctx.fillStyle = p.color;
+      }
+
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    rafIdRef.current = requestAnimationFrame(draw);
+  }, []);
+
+  /* ── Boot & cleanup ── */
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext("2d", { willReadFrequently: true });
-    if (!ctx) return;
 
-    let particles: Particle[] = [];
-    let animationFrameId: number;
+    const resizeCanvas = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
 
-    const mouse = {
-      x: -1000,
-      y: -1000,
-      radius: 150, // Increased radius
+    const boot = () => {
+      resizeCanvas();
+      generateParticles();
+      animateIntro();
+      draw();
+    };
+
+    const handleResize = () => {
+      if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
+      introCompleteRef.current = false;
+      hintRef.current?.classList.remove("show");
+      boot();
     };
 
     const handleMouseMove = (e: MouseEvent) => {
-      const rect = canvas.getBoundingClientRect();
-      mouse.x = e.clientX - rect.left;
-      mouse.y = e.clientY - rect.top;
+      const r = canvas.getBoundingClientRect();
+      mouseRef.current.x = e.clientX - r.left;
+      mouseRef.current.y = e.clientY - r.top;
     };
 
     const handleMouseLeave = () => {
-      mouse.x = -1000;
-      mouse.y = -1000;
+      mouseRef.current.x = -9999;
+      mouseRef.current.y = -9999;
     };
 
-    window.addEventListener("mousemove", handleMouseMove);
+    const handleTouchMove = (e: TouchEvent) => {
+      e.preventDefault();
+      const r = canvas.getBoundingClientRect();
+      const t = e.touches[0];
+      mouseRef.current.x = t.clientX - r.left;
+      mouseRef.current.y = t.clientY - r.top;
+    };
+
+    const handleTouchEnd = () => {
+      mouseRef.current.x = -9999;
+      mouseRef.current.y = -9999;
+    };
+
+    canvas.addEventListener("mousemove", handleMouseMove);
     canvas.addEventListener("mouseleave", handleMouseLeave);
-
-    const init = () => {
-      particles = [];
-      const width = canvas.parentElement?.clientWidth || window.innerWidth;
-      const height = canvas.parentElement?.clientHeight || window.innerHeight;
-
-      canvas.width = width;
-      canvas.height = height;
-
-      // Draw text to read pixel data
-      let fontSize = Math.min(width * 0.1, 88);
-      if (window.innerWidth < 768) {
-        fontSize = 40;
-      }
-      ctx.font = `400 ${fontSize}px "DM Sans", sans-serif`;
-      ctx.lineWidth = 1.0;
-      ctx.strokeStyle = "white";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-
-      const text1 = "Expa is a";
-      const text2 = "Company Studio";
-
-      const centerX = width / 2;
-      const centerY = height / 2;
-
-      // Use strokeText instead of fillText to get the outline effect
-      ctx.strokeText(text1, centerX, centerY - fontSize * 0.6);
-      ctx.strokeText(text2, centerX, centerY + fontSize * 0.6);
-
-      const textCoordinates = ctx.getImageData(0, 0, width, height);
-      ctx.clearRect(0, 0, width, height);
-
-      const gap = 4; // Increased gap for distinct dots
-
-      for (let y = 0; y < height; y += gap) {
-        for (let x = 0; x < width; x += gap) {
-          const index = (y * width + x) * 4;
-          const alpha = textCoordinates.data[index + 3];
-          // If the pixel is opaque, create a particle
-          if (alpha > 64) {
-            particles.push(new Particle(x, y, "rgba(255, 255, 255, 1)"));
-          }
-        }
-      }
-    };
-
-    const animate = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      for (let i = 0; i < particles.length; i++) {
-        particles[i].update(mouse.x, mouse.y, mouse.radius);
-        particles[i].draw(ctx);
-      }
-      animationFrameId = requestAnimationFrame(animate);
-    };
-
-    // Make sure font is loaded before initializing
-    if (document.fonts) {
-      document.fonts.ready.then(() => {
-        init();
-        animate();
-      });
-    } else {
-      init();
-      animate();
-    }
-
-    const handleResize = () => {
-      init();
-    };
-
+    canvas.addEventListener("touchmove", handleTouchMove, { passive: false });
+    canvas.addEventListener("touchend", handleTouchEnd);
     window.addEventListener("resize", handleResize);
 
+    document.fonts.ready.then(boot);
+
     return () => {
-      window.removeEventListener("resize", handleResize);
-      window.removeEventListener("mousemove", handleMouseMove);
+      if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
+      canvas.removeEventListener("mousemove", handleMouseMove);
       canvas.removeEventListener("mouseleave", handleMouseLeave);
-      cancelAnimationFrame(animationFrameId);
+      canvas.removeEventListener("touchmove", handleTouchMove);
+      canvas.removeEventListener("touchend", handleTouchEnd);
+      window.removeEventListener("resize", handleResize);
     };
-  }, []);
+  }, [generateParticles, animateIntro, draw]);
 
   return (
-    <header className="relative min-h-screen flex items-center justify-center">
-      <div className="w-full h-full absolute inset-0">
-        <canvas
-          ref={canvasRef}
-          className="w-full h-full block"
-        />
-        {/* Screen-reader only text for accessibility */}
-        <h1 className="sr-only">
-          Expa is a Company Studio
-        </h1>
+    <section className="hero-particle-section">
+      <canvas ref={canvasRef} className="hero-particle-canvas" />
+      <div ref={hintRef} className="hero-particle-hint">
+        Move your mouse over the text
       </div>
-    </header>
+
+      <style jsx>{`
+        .hero-particle-section {
+          position: relative;
+          width: 100%;
+          height: 100vh;
+          overflow: hidden;
+          background: #0f0f1a;
+        }
+
+        .hero-particle-canvas {
+          display: block;
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+        }
+
+        .hero-particle-hint {
+          position: absolute;
+          bottom: 28px;
+          left: 50%;
+          transform: translateX(-50%);
+          font-family: "Outfit", sans-serif;
+          font-size: 13px;
+          color: rgba(255, 255, 255, 0.32);
+          letter-spacing: 0.14em;
+          pointer-events: none;
+          opacity: 0;
+          transition: opacity 1.2s ease;
+          z-index: 10;
+        }
+
+        .hero-particle-hint.show {
+          opacity: 1;
+        }
+      `}</style>
+    </section>
   );
 }

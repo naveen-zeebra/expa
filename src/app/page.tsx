@@ -53,10 +53,10 @@ export default function Home() {
         <Hero />
 
         {/* Company Cards */}
-        <CompanyCards />
+        {/* <CompanyCards /> */}
 
         {/* information section */}
-        <InformationSection />
+        {/* <InformationSection /> */}
       </main>
 
       {/* Footer */}

@@ -175,6 +175,63 @@ html.lenis body {
   overflow: hidden;
 }
 
+/* ─── Glowing Slider Accent ─── */
+@keyframes slideAccent {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(100vw);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+.glowing-accent-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 200px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.95) 50%,
+    transparent 100%
+  );
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.9);
+  animation: slideAccent 7s ease-in-out infinite;
+}
+
+/* ─── White Dot Based Text ─── */
+.dotted-text {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.95);
+  stroke-width: 1.8px;
+  stroke-dasharray: 1px 4px;
+  stroke-linecap: round;
+  font-family: var(--font-display, "DM Sans", sans-serif);
+  font-size: 88px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+@media (max-width: 768px) {
+  .dotted-text {
+    font-size: 64px;
+    stroke-width: 1.5px;
+    stroke-dasharray: 1px 3.5px;
+  }
+}
+
+/* ─── Text Outline Utility ─── */
+.stroke-text {
+  color: transparent;
+  -webkit-text-stroke: 1.2px rgba(255, 255, 255, 0.9);
+  font-family: var(--font-display, "DM Sans", sans-serif);
+}
+
 /* ─── Footer gradient ─── */
 .footer-gradient::before {
   content: "";
