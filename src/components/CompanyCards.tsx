@@ -54,6 +54,20 @@ export default function CompanyCards() {
           },
         }
       );
+
+      /* ── Exit transition: cards scale down + fade as user scrolls past ── */
+      gsap.to(section, {
+        scale: 0.92,
+        opacity: 0,
+        filter: "blur(8px)",
+        ease: "none",
+        scrollTrigger: {
+          trigger: section,
+          start: "bottom 80%",
+          end: "bottom 20%",
+          scrub: 0.8,
+        },
+      });
     }, section);
 
     return () => ctx.revert();
@@ -78,12 +92,17 @@ export default function CompanyCards() {
         ))}
       </div>
 
+      {/* Bottom gradient transition to next section */}
+      <div className="section-transition" />
+
       <style jsx>{`
         .company-cards-section {
           position: relative;
-          padding: 60px 0;
+          padding: 60px 0 120px;
           overflow: hidden;
           background: #000;
+          will-change: transform, opacity, filter;
+          transform-origin: center bottom;
         }
 
         .company-row {
@@ -91,6 +110,17 @@ export default function CompanyCards() {
           gap: 16px;
           padding: 8px 0;
           will-change: transform;
+        }
+
+        .section-transition {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          height: 200px;
+          background: linear-gradient(to bottom, transparent, #000);
+          pointer-events: none;
+          z-index: 5;
         }
       `}</style>
     </section>

@@ -2,6 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+gsap.registerPlugin(ScrollTrigger);
 
 interface CompanyData {
   id: string;
@@ -164,23 +168,32 @@ export default function InformationSection() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sectionRef = useRef<HTMLElement>(null);
   const [selectedCompany, setSelectedCompany] = useState<CompanyData | null>(null);
-  const [isVisible, setIsVisible] = useState(false);
 
-  // Intersection observer for fade in
+  /* ── GSAP entrance animation ── */
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-        }
-      },
-      { threshold: 0.1 }
-    );
+    const section = sectionRef.current;
+    if (!section) return;
 
-    if (sectionRef.current) {
-      observer.observe(sectionRef.current);
-    }
-    return () => observer.disconnect();
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        section,
+        { opacity: 0, scale: 0.95, y: 60 },
+        {
+          opacity: 1,
+          scale: 1,
+          y: 0,
+          ease: "power2.out",
+          scrollTrigger: {
+            trigger: section,
+            start: "top 90%",
+            end: "top 40%",
+            scrub: 0.6,
+          },
+        }
+      );
+    }, section);
+
+    return () => ctx.revert();
   }, []);
 
   useEffect(() => {
@@ -311,9 +324,8 @@ export default function InformationSection() {
   return (
     <section 
       ref={sectionRef}
-      className={`relative w-full h-screen bg-black overflow-hidden transition-opacity duration-1000 ${
-        isVisible ? "opacity-100" : "opacity-0"
-      }`}
+      className="relative w-full h-screen bg-black overflow-hidden"
+      style={{ willChange: "transform, opacity" }}
     >
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full block" />
       
