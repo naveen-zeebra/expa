@@ -1,0 +1,24 @@
+# Reference compose file for the custom Jenkins controller.
+# Adjust the DOCKER_GID build arg and the jenkins_home volume name to match
+# your existing deployment - see jenkins/README.md for the migration steps.
+services:
+  jenkins:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        DOCKER_GID: "999" # override: stat -c '%g' /var/run/docker.sock
+    image: jenkins-custom:lts
+    container_name: jenkins
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  jenkins_home:
+    external: true
+    name: jenkins_home # set to your EXISTING volume name, do not let compose create a fresh one
