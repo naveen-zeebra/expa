@@ -1,0 +1,119 @@
+// Jenkins pipeline for the "expa" frontend (Next.js).
+// Update DOCKER_REGISTRY / IMAGE_NAME / credential IDs for your environment.
+pipeline {
+    agent any
+
+    options {
+        timestamps()
+        buildDiscarder(logRotator(numToKeepStr: '20'))
+        disableConcurrentBuilds()
+    }
+
+    environment {
+        APP_DIR         = 'expa'
+        DOCKER_REGISTRY = 'your-registry.example.com'
+        IMAGE_NAME      = "${DOCKER_REGISTRY}/expa-frontend"
+        IMAGE_TAG       = "${env.BUILD_NUMBER}"
+        REGISTRY_CRED   = 'docker-registry-credentials'
+    }
+
+    parameters {
+        booleanParam(name: 'PUSH_IMAGE', defaultValue: false, description: 'Push image to registry')
+        booleanParam(name: 'DEPLOY', defaultValue: false, description: 'Deploy after build')
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                dir("${APP_DIR}") {
+                    sh 'npm ci'
+                }
+            }
+        }
+
+        stage('Lint') {
+            steps {
+                dir("${APP_DIR}") {
+                    sh 'npm run lint'
+                }
+            }
+        }
+
+        stage('Build App') {
+            steps {
+                dir("${APP_DIR}") {
+                    sh 'npm run build'
+                }
+            }
+        }
+
+        stage('Docker Build') {
+            steps {
+                dir("${APP_DIR}") {
+                    sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} -t ${IMAGE_NAME}:latest ."
+                }
+            }
+        }
+
+        stage('Docker Image Smoke Test') {
+            steps {
+                dir("${APP_DIR}") {
+                    sh '''
+                        CID=$(docker run -d -p 3000:3000 ${IMAGE_NAME}:${IMAGE_TAG})
+                        sleep 5
+                        STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000)
+                        docker logs "$CID" || true
+                        docker stop "$CID" && docker rm "$CID"
+                        if [ "$STATUS" != "200" ] && [ "$STATUS" != "307" ]; then
+                            echo "Smoke test failed with HTTP status $STATUS"
+                            exit 1
+                        fi
+                    '''
+                }
+            }
+        }
+
+        stage('Push Image') {
+            when {
+                expression { return params.PUSH_IMAGE }
+            }
+            steps {
+                script {
+                    docker.withRegistry("https://${DOCKER_REGISTRY}", REGISTRY_CRED) {
+                        sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
+                        sh "docker push ${IMAGE_NAME}:latest"
+                    }
+                }
+            }
+        }
+
+        stage('Deploy') {
+            when {
+                expression { return params.DEPLOY }
+            }
+            steps {
+                echo "Add deployment steps for your target environment (e.g. kubectl set image, docker compose pull && up -d, ssh to host)."
+            }
+        }
+    }
+
+    post {
+        always {
+            dir("${APP_DIR}") {
+                sh 'docker image prune -f || true'
+            }
+        }
+        success {
+            echo "Build ${IMAGE_TAG} succeeded."
+        }
+        failure {
+            echo "Build ${IMAGE_TAG} failed."
+        }
+    }
+}
